@@ -1,0 +1,93 @@
+<html>
+<head>
+<title></title>
+<style>
+table,td {
+	border: 1px solid black;
+}
+table {
+	border-collapse: collapse;
+}
+#logBox {
+	width: 100%;
+	height: 50%;
+	font-family: monospace;
+	white-space: nowrap;
+	display: block;
+	overflow: hidden;
+}
+</style>
+</head>
+<body>
+Some GUI.
+<button onclick="exit();">Exit</button>
+<br>
+Logs:
+<textarea id="logBox"></textarea>
+<br>
+Near cell info (click to update):
+<table id="cellInfoTable"></table>
+<br>
+Measured cells (click to update):
+<table id="measureListTable"></table>
+<br>
+Harvested cells:
+<table id="harvestedCellsTable"></table>
+<button id="harvesterSendAllBtn">Send all</button>
+<script>
+var droid = new Android();
+function log(msg) {
+	logBox.textContent = msg+"\n"+logBox.textContent;
+}
+function logObj(obj) {
+	for (var i in obj) console.log(i+": "+obj[i]);
+}
+window.onerror = function(msg, url, line) {
+	log(msg)
+	alert(msg+"\non line: "+line+" of "+url);
+}
+function exit() {
+	droid.dismiss();
+}
+function XHR(method, path, data, callback) {
+	var xhr = new XMLHttpRequest();
+	xhr.open(method, path, true);
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState != 4) return;
+		callback(xhr.status, xhr.responseText, xhr.responseXML);
+	}
+	xhr.send(data)
+}
+
+var main_file_path = droid.getIntent().result.extras['com.googlecode.android_scripting.extra.SCRIPT_PATH'];
+var main_path = main_file_path.substr(0, main_file_path.lastIndexOf("/")+1);
+["core.js",
+ "cell.js",
+ "harvester.js",
+ "measure_info.js",
+ "oci.js"].forEach(function(path) {
+	var scr = document.createElement("script");
+	scr.src = main_path + path + "?r="+Math.random();
+	document.getElementsByTagName("head")[0].appendChild(scr);
+});
+
+window.onload = function() {
+	//TODO: touch events are faster
+	var oci = new OpenCellId(alert("Go to OpenCellID and register your key"));
+	oci.measureList();
+	
+	var mi = new MeasureInfo(measureListTable);
+	//measureListTable.onclick = function(){ oci.measureList() };
+	//measureListTable.onclick();
+	
+	var ci = new CellInfo(cellInfoTable);
+	cellInfoTable.onclick = function(){ ci.update() };
+	
+	var hr = new Harvester(harvestedCellsTable);
+	harvestedCellsTable.onclick = function(){ hr.updateTable() };
+	harvesterSendAllBtn.onclick = function(){ hr.sendAll() };
+	hr.startCollecting();
+}
+</script>
+</body>
+</html>
